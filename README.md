@@ -4,27 +4,30 @@ Automated k6 performance tests for WooCommerce. To be used for benchmarking perf
 
 ## Table of contents
 
-- [Pre-requisites](#pre-requisites)
+- [WooCommerce Performance Tests](#woocommerce-performance-tests)
+  - [Table of contents](#table-of-contents)
+  - [Pre-requisites](#pre-requisites)
     - [Install k6](#install-k6)
-- [Configuration](#configuration)
+  - [Configuration](#configuration)
     - [Test Environment](#test-environment)
     - [Config Variables](#config-variables)
-- [Running Tests](#running-tests)
+      - [Config Variables List](#config-variables-list)
+  - [Running Tests](#running-tests)
     - [Running Individual Tests](#running-individual-tests)
     - [Running Scenarios](#running-scenarios)
     - [Debugging Tests](#debugging-tests)
     - [User Agent](#user-agent)
-- [Results Output](#results-output)
+  - [Results Output](#results-output)
     - [Basic Results](#basic-results)
-    - [InfluxDB and Grafana](influxdb-and-grafana)
-- [Writing Tests](#writing-tests)
+    - [InfluxDB and Grafana](#influxdb-and-grafana)
+  - [Writing Tests](#writing-tests)
     - [Capturing Requests](#capturing-requests)
     - [Static Assets](#static-assets)
     - [Request Headers](#request-headers)
     - [Correlation](#correlation)
     - [Groups](#groups)
     - [Checks](#checks)
-- [Other Resources](#other-resources)
+  - [Other Resources](#other-resources)
 
 ---
 
@@ -38,10 +41,6 @@ To install k6 on macOS using [Homebrew](https://brew.sh/)
 
 [For other platforms please see the k6 installation guide.](https://k6.io/docs/getting-started/installation/)
 
-Alternatively the k6 docker image can be used to execute tests.
-
-`docker pull loadimpact/k6`
-
 ---
 
 ## Configuration
@@ -50,12 +49,7 @@ Alternatively the k6 docker image can be used to execute tests.
 
 Before using the tests a test environment is needed to run against.
 
-We first spin up an environment using `wp-env` and configure that environment with the necessary plugins and data using the Initialization Script [`init-sample-products.sh`](https://github.com/woocommerce/woocommerce/tree/trunk/plugins/woocommerce/tests/performance/bin/init-sample-products.sh) that will set up a shop with sample products imported and the shop settings (payment method, permalinks, address etc) needed for the tests already set. It is recommended using this to just see the tests in action.
-
-```sh
-pnpm env:dev --filter=@woocommerce/plugin-woocommerce
-pnpm env:performance-init --filter=@woocommerce/plugin-woocommerce
-```
+For setting up a test environment, you can configure it with the necessary plugins and data using the Initialization Script [`init-sample-products.sh`](https://github.com/woocommerce/woocommerce/tree/trunk/plugins/woocommerce/tests/performance/bin/init-sample-products.sh) that will set up a shop with sample products imported and the shop settings (payment method, permalinks, address etc) needed for the tests already set.
 
 If using a different environment the details can be changed in `config.js`.
 
@@ -107,11 +101,9 @@ When referring to running k6 tests usually this means executing the test scenari
 
 To execute an individual test file (for example `requests/shopper/shop-page.js`)  containing requests.
 
-CLI `k6 run requests/shopper/shop-page.js`
+`k6 run requests/shopper/shop-page.js`
 
-Docker `docker run --network="host" -v /[YOUR LOCAL WC DIRECTORY FULL PATH]/tests:/tests -it loadimpact/k6 run /tests/performance/requests/shopper/shop-page.js`
-
-This will run the individual test for 1 iteration. 
+This will run the individual test for 1 iteration.
 
 ---
 
@@ -132,9 +124,7 @@ The amount of think time can be controlled from `config.js`.
 
 To execute a test scenario (for example `tests/simple-all-requests.js`).
 
-CLI `k6 run tests/simple-all-requests.js`
-
-Docker `docker run --network="host" -v /[YOUR LOCAL WC DIRECTORY FULL PATH]/tests:/tests -it loadimpact/k6 run /tests/simple-all-requests.js`
+`k6 run tests/simple-all-requests.js`
 
 ---
 
@@ -228,9 +218,9 @@ In additional any use of CDNs, cache settings, and themes used would also vary f
 
 ### Request Headers
 
-Every HTTP requests tested includes the headers. 
+Every HTTP requests tested includes the headers.
 
-To make it easier to manage the headers they have been moved to a separate file so any changes can be made to all the requests at once. 
+To make it easier to manage the headers they have been moved to a separate file so any changes can be made to all the requests at once.
 In `headers.js` the common headers are grouped by type and then can be imported in for use in the requests. However if an individual request uniquely needs a specific header this can still be added in as an extra member of the headers object literal of that request.
 
 ---
