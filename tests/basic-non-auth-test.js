@@ -43,15 +43,52 @@ import {
 // Get product ID from environment variable or extracted from page
 const product_id = __ENV.P_ID || null;
 
-
 export const options = {
 	scenarios: {
-		'basic-non-auth': {
-			executor: 'per-vu-iterations',
-			vus: 1,
-			iterations: 1,
-			maxDuration: '30s',
+		// 80% of traffic - browsing flow (no purchases)
+		browsing: {
+			executor: 'ramping-arrival-rate',
+			startRate: 8, // starting iterations per minute (80% of total)
+			timeUnit: '1m',
+			preAllocatedVUs: 10,
+			maxVUs: 50,
+			stages: [
+				{ target: 8, duration: '2m' },    // ramp up to 8 iterations/min
+				{ target: 40, duration: '10m' },  // ramp up to 40 iterations/min
+				{ target: 40, duration: '5m' },   // sustain 40 iterations/min
+				{ target: 8, duration: '2m' },    // ramp down to 8 iterations/min
+			],
+			exec: 'browsingFlow',
+			tags: { scenario: 'browsing', flow_type: 'non_conversion' },
 		},
+		// 20% of traffic - conversion flow (complete purchase)
+		conversion: {
+			executor: 'ramping-arrival-rate',
+			startRate: 2, // starting iterations per minute (20% of total)
+			timeUnit: '1m',
+			preAllocatedVUs: 5,
+			maxVUs: 15,
+			stages: [
+				{ target: 2, duration: '2m' },    // ramp up to 2 iterations/min
+				{ target: 10, duration: '10m' },  // ramp up to 10 iterations/min
+				{ target: 10, duration: '5m' },   // sustain 10 iterations/min
+				{ target: 2, duration: '2m' },    // ramp down to 2 iterations/min
+			],
+			exec: 'conversionFlow',
+			tags: { scenario: 'conversion', flow_type: 'purchase' },
+		},
+	},
+	thresholds: {
+		// Performance thresholds for different request types
+		'http_req_duration{name:Shopper - Site Root}': ['p(95)<5000'],
+		'http_req_duration{name:Shopper - Shop Page}': ['p(95)<5000'],
+		'http_req_duration{name:Shopper - Product Page}': ['p(95)<5000'],
+		'http_req_duration{name:Shopper - Search Products}': ['p(95)<5000'],
+		'http_req_duration{name:Shopper - wc-ajax=add_to_cart}': ['p(95)<3000'],
+		'http_req_duration{name:Shopper - View Cart}': ['p(95)<5000'],
+		'http_req_duration{name:Shopper - View Checkout}': ['p(95)<5000'],
+		'http_req_duration{name:Shopper - Store API Checkout}': ['p(95)<10000'],
+		'http_req_failed': ['rate<0.1'], // Less than 10% of requests should fail
 	},
 };
 
@@ -373,12 +410,44 @@ function checkout() {
 	sleep(randomIntBetween(`${think_time_min}`, `${think_time_max}`));
 }
 
-export default function () {
+// Browsing flow - 80% of traffic (no purchases)
+export function browsingFlow() {
 	homePage();
 	shopPage();
 	const productId = singleProduct();
 	searchProduct();
-	addToCart(productId);
-	viewCart();
-	checkout();
+
+	// Some users might add to cart but don't complete purchase
+	if (Math.random() < 0.3) { // 30% of browsers add to cart but don't complete
+		if (productId) {
+			addToCart(productId);
+			// 50% of those who add to cart will view cart
+			if (Math.random() < 0.5) {
+				viewCart();
+			}
+		}
+	}
+}
+
+// Conversion flow - 20% of traffic (complete purchase)
+export function conversionFlow() {
+	homePage();
+	shopPage();
+	const productId = singleProduct();
+	searchProduct();
+
+	if (productId) {
+		addToCart(productId);
+		viewCart();
+		checkout();
+	} else {
+		console.warn('Product ID not found, skipping checkout flow');
+	}
+}
+
+// Keep the original function for backward compatibility
+export default function () {
+	// This is now deprecated in favor of the scenario-based approach
+	// But keeping it for any direct script execution
+	conversionFlow();
 }
